@@ -10,6 +10,27 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['ALLOWED_EXTENSIONS'] = {'docx', 'doc'}
 
+# Available font options
+FONT_FAMILIES = [
+    {"value": "", "name": "Default"},
+    {"value": "Arial, sans-serif", "name": "Arial"},
+    {"value": "Times New Roman, serif", "name": "Times New Roman"},
+    {"value": "Calibri, sans-serif", "name": "Calibri"},
+    {"value": "Verdana, sans-serif", "name": "Verdana"},
+    {"value": "Georgia, serif", "name": "Georgia"},
+    {"value": "Courier New, monospace", "name": "Courier New"}
+]
+
+FONT_SIZES = [
+    {"value": "", "name": "Default"},
+    {"value": "12px", "name": "12px"},
+    {"value": "14px", "name": "14px"},
+    {"value": "16px", "name": "16px"},
+    {"value": "18px", "name": "18px"},
+    {"value": "20px", "name": "20px"},
+    {"value": "24px", "name": "24px"}
+]
+
 # Create upload folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -33,16 +54,31 @@ def index():
             flash('No selected file')
             return redirect(request.url)
         
+        # Get font options from form
+        font_family = request.form.get('font_family', '')
+        font_size = request.form.get('font_size', '')
+        
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             
             try:
-                html_content = convert_docx_to_html(filepath)
+                # Get both escaped HTML and raw HTML
+                html_content_escaped, raw_html_content = convert_docx_to_html(
+                    filepath, 
+                    font_family=font_family, 
+                    font_size=font_size
+                )
+                
                 # Remove uploaded file after conversion
                 os.remove(filepath)
-                return render_template('result.html', html_content=html_content)
+                
+                return render_template(
+                    'result.html', 
+                    html_content=html_content_escaped,
+                    raw_html_content=raw_html_content
+                )
             except Exception as e:
                 flash(f'Error converting document: {str(e)}')
                 # Clean up file on error
@@ -53,7 +89,7 @@ def index():
             flash('File type not allowed. Please upload a .docx or .doc file.')
             return redirect(request.url)
     
-    return render_template('index.html')
+    return render_template('index.html', font_families=FONT_FAMILIES, font_sizes=FONT_SIZES)
 
 if __name__ == '__main__':
     app.run(debug=True)

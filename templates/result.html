@@ -16,7 +16,10 @@
         <main class="result-main">
             <div class="action-bar">
                 <a href="{{ url_for('index') }}" class="back-btn">Convert Another File</a>
-                <button id="copy-btn" class="copy-btn">Copy HTML</button>
+                <div class="copy-options">
+                    <button id="copy-html-btn" class="copy-btn">Copy HTML Code</button>
+                    <button id="copy-text-btn" class="copy-btn">Copy Preview Text</button>
+                </div>
             </div>
 
             <div class="result-section">
@@ -41,25 +44,42 @@
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <script>
+        // Store the raw HTML content for the preview
+        const rawHtmlContent = `{{ raw_html_content|safe }}`;
+        
         // Set up preview frame content
         document.addEventListener('DOMContentLoaded', function() {
             const previewFrame = document.getElementById('preview-frame');
-            const htmlCode = document.getElementById('html-code').textContent;
             
-            // Insert the HTML content into the iframe
+            // Insert the raw HTML content into the iframe
             const previewDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
             previewDoc.open();
-            previewDoc.write(htmlCode);
+            previewDoc.write(rawHtmlContent);
             previewDoc.close();
             
-            // Copy functionality
-            document.getElementById('copy-btn').addEventListener('click', function() {
+            // Copy HTML functionality
+            document.getElementById('copy-html-btn').addEventListener('click', function() {
                 const codeText = document.getElementById('html-code').textContent;
                 navigator.clipboard.writeText(codeText).then(function() {
-                    const copyBtn = document.getElementById('copy-btn');
-                    copyBtn.textContent = 'Copied!';
+                    const copyBtn = document.getElementById('copy-html-btn');
+                    copyBtn.textContent = 'HTML Copied!';
                     setTimeout(function() {
-                        copyBtn.textContent = 'Copy HTML';
+                        copyBtn.textContent = 'Copy HTML Code';
+                    }, 2000);
+                });
+            });
+            
+            // Copy Preview Text functionality
+            document.getElementById('copy-text-btn').addEventListener('click', function() {
+                // Get all text nodes from the iframe's body
+                const previewText = previewFrame.contentDocument.body.innerText || 
+                                    previewFrame.contentWindow.document.body.innerText;
+                
+                navigator.clipboard.writeText(previewText).then(function() {
+                    const copyBtn = document.getElementById('copy-text-btn');
+                    copyBtn.textContent = 'Text Copied!';
+                    setTimeout(function() {
+                        copyBtn.textContent = 'Copy Preview Text';
                     }, 2000);
                 });
             });
