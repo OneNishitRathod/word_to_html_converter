@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversion Result - Word to HTML Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Word to HTML Converter</h1>
+            <p>Conversion Results</p>
+        </header>
+
+        <main class="result-main">
+            <div class="action-bar">
+                <a href="{{ url_for('index') }}" class="back-btn">Convert Another File</a>
+                <button id="copy-btn" class="copy-btn">Copy HTML</button>
+            </div>
+
+            <div class="result-section">
+                <h2>HTML Code</h2>
+                <div class="code-container">
+                    <pre><code id="html-code">{{ html_content }}</code></pre>
+                </div>
+            </div>
+            
+            <div class="preview-section">
+                <h2>Preview</h2>
+                <div class="preview-container">
+                    <iframe id="preview-frame" title="HTML Preview"></iframe>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by Python, Flask, and Mammoth</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // Set up preview frame content
+        document.addEventListener('DOMContentLoaded', function() {
+            const previewFrame = document.getElementById('preview-frame');
+            const htmlCode = document.getElementById('html-code').textContent;
+            
+            // Insert the HTML content into the iframe
+            const previewDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+            previewDoc.open();
+            previewDoc.write(htmlCode);
+            previewDoc.close();
+            
+            // Copy functionality
+            document.getElementById('copy-btn').addEventListener('click', function() {
+                const codeText = document.getElementById('html-code').textContent;
+                navigator.clipboard.writeText(codeText).then(function() {
+                    const copyBtn = document.getElementById('copy-btn');
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(function() {
+                        copyBtn.textContent = 'Copy HTML';
+                    }, 2000);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
