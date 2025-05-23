@@ -3,14 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Word to HTML Converter</title>
+    <title>Word to HTML Converter - Enhanced</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>Word to HTML Converter</h1>
-            <p>Convert your Word documents (.docx, .doc) to HTML with ease.</p>
+            <p>Convert your Word documents (.docx, .doc) to HTML with advanced formatting support.</p>
+            <div class="features-highlight">
+                <span class="feature-tag">Tables</span>
+                <span class="feature-tag">Multi-level Lists</span>
+                <span class="feature-tag">Images</span>
+                <span class="feature-tag">Multi-column</span>
+                <span class="feature-tag">Line Breaks</span>
+            </div>
         </header>
 
         <main>
@@ -25,54 +32,222 @@
             {% endwith %}
 
             <div class="upload-section">
-                <form method="POST" enctype="multipart/form-data">
+                <form method="POST" enctype="multipart/form-data" id="conversion-form">
                     <div class="file-input-container">
                         <label for="document" class="file-label">Choose a Word document</label>
                         <input type="file" id="document" name="document" accept=".docx,.doc" class="file-input" required>
                         <span id="file-name" class="file-name">No file chosen</span>
+                        <div class="file-info" id="file-info" style="display: none;">
+                            <small>File size: <span id="file-size"></span></small>
+                        </div>
                     </div>
                     
                     <div class="formatting-options">
                         <h3>Formatting Options</h3>
-                        <div class="form-group">
-                            <label for="font_family">Font Family:</label>
-                            <select id="font_family" name="font_family" class="form-control">
-                                {% for font in font_families %}
-                                <option value="{{ font.value }}">{{ font.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
                         
-                        <div class="form-group">
-                            <label for="font_size">Font Size:</label>
-                            <select id="font_size" name="font_size" class="form-control">
-                                {% for size in font_sizes %}
-                                <option value="{{ size.value }}">{{ size.name }}</option>
-                                {% endfor %}
-                            </select>
+                        <div class="options-grid">
+                            <div class="form-group">
+                                <label for="font_family">Font Family:</label>
+                                <select id="font_family" name="font_family" class="form-control">
+                                    {% for font in font_families %}
+                                    <option value="{{ font.value }}">{{ font.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="font_size">Font Size:</label>
+                                <select id="font_size" name="font_size" class="form-control">
+                                    {% for size in font_sizes %}
+                                    <option value="{{ size.value }}" {% if size.value == '16px' %}selected{% endif %}>{{ size.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="image_size">Maximum Image Width:</label>
+                                <select id="image_size" name="image_size" class="form-control">
+                                    {% for size in image_sizes %}
+                                    <option value="{{ size.value }}" {% if size.value == '800' %}selected{% endif %}>{{ size.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                         </div>
                     </div>
                     
-                    <button type="submit" class="convert-btn">Convert to HTML</button>
+                    <div class="conversion-controls">
+                        <button type="button" id="analyze-btn" class="analyze-btn">Quick Analysis</button>
+                        <button type="submit" class="convert-btn">Convert to HTML</button>
+                    </div>
+                    
+                    <div id="loading-indicator" class="loading-indicator" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Converting your document...</p>
+                    </div>
                 </form>
+                
+                <div id="analysis-result" class="analysis-result" style="display: none;">
+                    <h3>Document Analysis</h3>
+                    <div id="analysis-content"></div>
+                </div>
             </div>
 
             <div class="info-section">
-                <h2>How it works</h2>
-                <ol>
-                    <li>Upload your Word document (.docx or .doc format)</li>
-                    <li>Select font style and size options (optional)</li>
-                    <li>Click the "Convert to HTML" button</li>
-                    <li>View and copy the generated HTML code or preview text</li>
-                </ol>
+                <h2>Enhanced Features</h2>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <h3>📊 Tables</h3>
+                        <p>Converts Word tables with proper styling, borders, and responsive design.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>📝 Multi-level Lists</h3>
+                        <p>Preserves nested bullet points and numbered lists with proper indentation.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>🖼️ Images</h3>
+                        <p>Embeds images as base64 data with automatic resizing and optimization.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>📄 Multi-column Layout</h3>
+                        <p>Supports two and three-column text layouts from Word documents.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>↩️ Line Breaks</h3>
+                        <p>Preserves line spacing and paragraph formatting from the original document.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>🎨 Advanced Styling</h3>
+                        <p>Maintains headings, quotes, and other formatting elements with CSS.</p>
+                    </div>
+                </div>
+                
+                <div class="usage-instructions">
+                    <h2>How to Use</h2>
+                    <ol>
+                        <li><strong>Upload:</strong> Select your Word document (.docx or .doc format)</li>
+                        <li><strong>Analyze (Optional):</strong> Use Quick Analysis to preview document complexity</li>
+                        <li><strong>Configure:</strong> Choose font family, size, and maximum image width</li>
+                        <li><strong>Convert:</strong> Click "Convert to HTML" to generate the HTML code</li>
+                        <li><strong>Use:</strong> Copy the HTML code or preview the rendered output</li>
+                    </ol>
+                </div>
             </div>
         </main>
 
         <footer>
-            <p>Powered by Python, Flask, and Mammoth</p>
+            <p>Powered by Python, Flask, Mammoth, and Pillow | Enhanced for Complex Documents</p>
         </footer>
     </div>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</body>
-</html>
+    <script>
+        // Enhanced file handling
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('document');
+            const fileNameSpan = document.getElementById('file-name');
+            const fileInfo = document.getElementById('file-info');
+            const fileSizeSpan = document.getElementById('file-size');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const conversionForm = document.getElementById('conversion-form');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const analysisResult = document.getElementById('analysis-result');
+            const analysisContent = document.getElementById('analysis-content');
+            
+            // File selection handler
+            fileInput.addEventListener('change', function() {
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    fileNameSpan.textContent = file.name;
+                    
+                    // Show file size
+                    const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                    fileSizeSpan.textContent = fileSize + ' MB';
+                    fileInfo.style.display = 'block';
+                    
+                    // Enable analyze button
+                    analyzeBtn.disabled = false;
+                    analysisResult.style.display = 'none';
+                } else {
+                    fileNameSpan.textContent = 'No file chosen';
+                    fileInfo.style.display = 'none';
+                    analyzeBtn.disabled = true;
+                    analysisResult.style.display = 'none';
+                }
+            });
+            
+            // Quick analysis functionality
+            analyzeBtn.addEventListener('click', function() {
+                if (!fileInput.files.length) {
+                    alert('Please select a file first');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('document', fileInput.files[0]);
+                
+                analyzeBtn.textContent = 'Analyzing...';
+                analyzeBtn.disabled = true;
+                
+                fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    // Display analysis results
+                    let analysisHtml = '<div class="analysis-stats">';
+                    
+                    if (data.paragraphs) {
+                        analysisHtml += `<div class="stat-item"><strong>Paragraphs:</strong> ${data.paragraphs}</div>`;
+                    }
+                    
+                    if (data.tables) {
+                        analysisHtml += `<div class="stat-item"><strong>Tables:</strong> ${data.tables}</div>`;
+                    }
+                    
+                    if (data.list_items) {
+                        analysisHtml += `<div class="stat-item"><strong>List Items:</strong> ${data.list_items}</div>`;
+                    }
+                    
+                    if (data.has_images) {
+                        analysisHtml += `<div class="stat-item"><strong>Images:</strong> Present</div>`;
+                    }
+                    
+                    if (data.sections) {
+                        analysisHtml += `<div class="stat-item"><strong>Sections:</strong> ${data.sections}</div>`;
+                    }
+                    
+                    if (data.styles_used && data.styles_used.length > 0) {
+                        analysisHtml += `<div class="stat-item"><strong>Styles Used:</strong> ${data.styles_used.slice(0, 5).join(', ')}${data.styles_used.length > 5 ? '...' : ''}</div>`;
+                    }
+                    
+                    analysisHtml += '</div>';
+                    
+                    analysisContent.innerHTML = analysisHtml;
+                    analysisResult.style.display = 'block';
+                })
+                .catch(error => {
+                    alert('Analysis failed: ' + error.message);
+                })
+                .finally(() => {
+                    analyzeBtn.textContent = 'Quick Analysis';
+                    analyzeBtn.disabled = false;
+                });
+            });
+            
+            // Form submission handler
+            conversionForm.addEventListener('submit', function(e) {
+                loadingIndicator.style.display = 'block';
+                
+                // Scroll to loading indicator
+                loadingIndicator.scrollIntoView({ behavior: 'smooth' });
+            });
+            
+            // Initialize analyze button state
+            analyzeBtn.disabled = true;
+        });
+    </script>

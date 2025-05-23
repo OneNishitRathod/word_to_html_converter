@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conversion Result - Word to HTML Converter</title>
+    <title>Conversion Result - Enhanced Word to HTML Converter</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>Word to HTML Converter</h1>
-            <p>Conversion Results</p>
+            <p>Conversion Results for: <strong>{{ original_filename }}</strong></p>
         </header>
 
         <main class="result-main">
@@ -19,26 +19,111 @@
                 <div class="copy-options">
                     <button id="copy-html-btn" class="copy-btn">Copy HTML Code</button>
                     <button id="copy-text-btn" class="copy-btn">Copy Preview Text</button>
+                    <button id="download-html-btn" class="copy-btn">Download HTML</button>
                 </div>
             </div>
 
-            <div class="result-section">
-                <h2>HTML Code</h2>
-                <div class="code-container">
-                    <pre><code id="html-code">{{ html_content }}</code></pre>
+            {% if doc_analysis and doc_analysis.get('paragraphs') %}
+            <div class="document-stats">
+                <h3>Document Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ doc_analysis.paragraphs }}</div>
+                        <div class="stat-label">Paragraphs</div>
+                    </div>
+                    {% if doc_analysis.tables %}
+                    <div class="stat-card">
+                        <div class="stat-number">{{ doc_analysis.tables }}</div>
+                        <div class="stat-label">Tables</div>
+                    </div>
+                    {% endif %}
+                    {% if doc_analysis.list_items %}
+                    <div class="stat-card">
+                        <div class="stat-number">{{ doc_analysis.list_items }}</div>
+                        <div class="stat-label">List Items</div>
+                    </div>
+                    {% endif %}
+                    {% if doc_analysis.has_images %}
+                    <div class="stat-card">
+                        <div class="stat-number">✓</div>
+                        <div class="stat-label">Images</div>
+                    </div>
+                    {% endif %}
+                    {% if doc_analysis.sections %}
+                    <div class="stat-card">
+                        <div class="stat-number">{{ doc_analysis.sections }}</div>
+                        <div class="stat-label">Sections</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="result-tabs">
+                <button class="tab-btn active" data-tab="html-code">HTML Code</button>
+                <button class="tab-btn" data-tab="preview">Live Preview</button>
+                <button class="tab-btn" data-tab="formatted">Formatted HTML</button>
+            </div>
+
+            <div class="tab-content active" id="html-code">
+                <div class="result-section">
+                    <h2>Raw HTML Code</h2>
+                    <div class="code-container">
+                        <pre><code id="html-code-content">{{ html_content }}</code></pre>
+                    </div>
                 </div>
             </div>
             
-            <div class="preview-section">
-                <h2>Preview</h2>
+            <div class="tab-content" id="preview">
+                <div class="preview-section">
+                    <h2>Live Preview</h2>
+                    <div class="preview-controls">
+                        <button id="refresh-preview" class="control-btn">Refresh Preview</button>
+                        <button id="fullscreen-preview" class="control-btn">Fullscreen</button>
+                    </div>
                 <div class="preview-container">
-                    <iframe id="preview-frame" title="HTML Preview"></iframe>
+                        <iframe id="preview-frame" title="HTML Preview" style="width: 100%; min-height: 500px; border: none;"></iframe>
+                    </div>
                 </div>
+            </div>
+
+            <div class="tab-content" id="formatted">
+                <div class="result-section">
+                    <h2>Formatted HTML (with CSS)</h2>
+                    <div class="code-container">
+                        <pre><code id="formatted-html-content">{{ raw_html_content|e }}</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            {% if doc_analysis and doc_analysis.get('styles_used') %}
+            <div class="styles-info">
+                <h3>Document Styles Detected</h3>
+                <div class="styles-list">
+                    {% for style in doc_analysis.styles_used[:10] %}
+                    <span class="style-tag">{{ style }}</span>
+                    {% endfor %}
+                    {% if doc_analysis.styles_used|length > 10 %}
+                    <span class="style-tag">... and {{ doc_analysis.styles_used|length - 10 }} more</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="conversion-tips">
+                <h3>💡 Tips for Using Your HTML</h3>
+                <ul>
+                    <li><strong>Tables:</strong> The converted tables are responsive and will adapt to different screen sizes</li>
+                    <li><strong>Images:</strong> Images are embedded as base64 data - no external files needed</li>
+                    <li><strong>Lists:</strong> Multi-level lists maintain their structure and indentation</li>
+                    <li><strong>Styling:</strong> Copy the "Formatted HTML" tab for complete styling with embedded CSS</li>
+                    <li><strong>Compatibility:</strong> The HTML works in all modern browsers and email clients</li>
+                </ul>
             </div>
         </main>
 
         <footer>
-            <p>Powered by Python, Flask, and Mammoth</p>
+            <p>Powered by Python, Flask, Mammoth, and Pillow | Enhanced for Complex Documents</p>
         </footer>
     </div>
 
@@ -46,42 +131,127 @@
     <script>
         // Store the raw HTML content for the preview
         const rawHtmlContent = `{{ raw_html_content|safe }}`;
+        const htmlCodeContent = `{{ html_content|safe }}`;
         
-        // Set up preview frame content
         document.addEventListener('DOMContentLoaded', function() {
             const previewFrame = document.getElementById('preview-frame');
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
             
-            // Insert the raw HTML content into the iframe
-            const previewDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
-            previewDoc.open();
-            previewDoc.write(rawHtmlContent);
-            previewDoc.close();
+            // Tab switching functionality
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targetTab = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs and contents
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding content
+                    this.classList.add('active');
+                    document.getElementById(targetTab).classList.add('active');
+                    
+                    // Load preview if preview tab is selected
+                    if (targetTab === 'preview') {
+                        loadPreview();
+                    }
+                });
+            });
+            
+            // Load preview function
+            function loadPreview() {
+                const previewDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+                previewDoc.open();
+                previewDoc.write(rawHtmlContent);
+                previewDoc.close();
+            }
+            
+            // Initialize preview on page load
+            loadPreview();
             
             // Copy HTML functionality
             document.getElementById('copy-html-btn').addEventListener('click', function() {
-                const codeText = document.getElementById('html-code').textContent;
-                navigator.clipboard.writeText(codeText).then(function() {
+                const activeTab = document.querySelector('.tab-content.active');
+                let textToCopy = '';
+                
+                if (activeTab.id === 'formatted') {
+                    textToCopy = rawHtmlContent;
+                } else {
+                    textToCopy = htmlCodeContent;
+                }
+                
+                navigator.clipboard.writeText(textToCopy).then(function() {
                     const copyBtn = document.getElementById('copy-html-btn');
+                    const originalText = copyBtn.textContent;
                     copyBtn.textContent = 'HTML Copied!';
+                    copyBtn.classList.add('success');
                     setTimeout(function() {
-                        copyBtn.textContent = 'Copy HTML Code';
+                        copyBtn.textContent = originalText;
+                        copyBtn.classList.remove('success');
                     }, 2000);
+                }).catch(function(err) {
+                    alert('Failed to copy HTML: ' + err);
                 });
             });
             
             // Copy Preview Text functionality
             document.getElementById('copy-text-btn').addEventListener('click', function() {
-                // Get all text nodes from the iframe's body
-                const previewText = previewFrame.contentDocument.body.innerText || 
-                                    previewFrame.contentWindow.document.body.innerText;
+                const previewDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+                const previewText = previewDoc.body.innerText || previewDoc.body.textContent;
                 
                 navigator.clipboard.writeText(previewText).then(function() {
                     const copyBtn = document.getElementById('copy-text-btn');
+                    const originalText = copyBtn.textContent;
                     copyBtn.textContent = 'Text Copied!';
+                    copyBtn.classList.add('success');
                     setTimeout(function() {
-                        copyBtn.textContent = 'Copy Preview Text';
+                        copyBtn.textContent = originalText;
+                        copyBtn.classList.remove('success');
                     }, 2000);
+                }).catch(function(err) {
+                    alert('Failed to copy text: ' + err);
                 });
+            });
+            
+            // Download HTML functionality
+            document.getElementById('download-html-btn').addEventListener('click', function() {
+                const blob = new Blob([rawHtmlContent], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '{{ original_filename.rsplit(".", 1)[0] if original_filename else "converted" }}.html';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                const downloadBtn = document.getElementById('download-html-btn');
+                const originalText = downloadBtn.textContent;
+                downloadBtn.textContent = 'Downloaded!';
+                downloadBtn.classList.add('success');
+                setTimeout(function() {
+                    downloadBtn.textContent = originalText;
+                    downloadBtn.classList.remove('success');
+                }, 2000);
+            });
+            
+            // Refresh preview functionality
+            document.getElementById('refresh-preview').addEventListener('click', function() {
+                loadPreview();
+                
+                const refreshBtn = document.getElementById('refresh-preview');
+                const originalText = refreshBtn.textContent;
+                refreshBtn.textContent = 'Refreshed!';
+                setTimeout(function() {
+                    refreshBtn.textContent = originalText;
+                }, 1000);
+            });
+            
+            // Fullscreen preview functionality
+            document.getElementById('fullscreen-preview').addEventListener('click', function() {
+                const newWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+                newWindow.document.write(rawHtmlContent);
+                newWindow.document.close();
             });
         });
     </script>
