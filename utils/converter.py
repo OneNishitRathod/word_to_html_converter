@@ -23,9 +23,22 @@ def convert_docx_to_html(docx_path, font_family=None, font_size=None, max_image_
     Returns:
         tuple: (html_content, raw_html_content)
             - html_content: HTML content for code display
-            - raw_html_content: HTML content for rendering
+            - raw_html_content: HTML content for rendering with font styles
     """
     
+    def should_skip_element(element):
+        # Skip letterhead tables that contain ministry information
+        if element.tag == 'table':
+            text_content = ''.join(element.itertext()).lower()
+            skip_patterns = [
+                'ministry of public',
+                'ministère des services',
+                'consumer services operations division',
+                'division des opérations'
+            ]
+            return any(pattern in text_content.lower() for pattern in skip_patterns)
+        return False
+
     # Image conversion function
     def convert_image(image):
         try:
@@ -103,27 +116,32 @@ def convert_docx_to_html(docx_path, font_family=None, font_size=None, max_image_
         result = mammoth.convert_to_html(
             docx_file,
             style_map=style_map,
-            convert_image=mammoth.images.img_element(convert_image)
+            convert_image=mammoth.images.img_element(convert_image),
+            ignore_empty_paragraphs=True
         )
         
         html_content = result.value
         
-        # Post-process HTML for better formatting
-        html_content = enhance_html_formatting(html_content)
+        # Remove letterhead table using BeautifulSoup
+        soup = BeautifulSoup(html_content, 'html.parser')
+        first_table = soup.find('table')
+        if first_table:
+            table_text = first_table.get_text().lower()
+            if any(pattern in table_text for pattern in [
+                'ministry of public',
+                'ministère des services',
+                'consumer services operations division',
+                'division des opérations'
+            ]):
+                first_table.decompose()
         
-        # Apply custom font styling if specified
-        if font_family or font_size:
-            style_attrs = []
-            if font_family:
-                style_attrs.append(f"font-family: {font_family}")
-            if font_size:
-                style_attrs.append(f"font-size: {font_size}")
-            
-            style_str = "; ".join(style_attrs)
-            html_content = f'<div style="{style_str}">{html_content}</div>'
+        html_content = str(soup)
+        
+        # Post-process HTML for better formatting        html_content = enhance_html_formatting(html_content)
         
         # Add comprehensive CSS for better rendering
-        full_html = create_complete_html(html_content)
+        # Font styles will be applied to the body tag in create_complete_html
+        full_html = create_complete_html(html_content, font_family, font_size)
         
         return html_content, full_html
 
@@ -267,14 +285,26 @@ def enhance_html_formatting(html_content):
     
     return str(soup)
 
-def create_complete_html(body_content):
+def create_complete_html(body_content, font_family=None, font_size=None):
     """
     Create a complete HTML document with enhanced CSS for complex content.
-    """
+    
+    Args:
+        body_content (str): The HTML content for the body
+        font_family (str, optional): Font family to apply to the HTML content
+        font_size (str, optional): Font size to apply to the HTML content
+        
+    Returns:
+        str: Complete HTML document with CSS styling
+    """    # Prepare body font styles
+    base_font_family = font_family if font_family else "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+    base_font_size = font_size if font_size else 'inherit'
+    
     css = """
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: """ + base_font_family + """;
+            font-size: """ + base_font_size + """;
             line-height: 1.6;
             color: #333;
             max-width: 1200px;
@@ -542,7 +572,96 @@ def create_complete_html(body_content):
         li > ol:last-child {
             margin-bottom: 0;
         }
+          /* Ministry Footer Styles */
+        .ministry-footer {
+            margin-top: 10px;
+            padding: 10px 0;
+            line-height: inherit;
+            font-family: inherit;
+            font-size: inherit;
+        }
+        
+        .ministry-footer h2 {
+            font-size: inherit;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: inherit;
+            border: none;
+            padding: 0;
+        }
+        
+        .ministry-footer p {
+            margin: 2px 0;
+            color: inherit;
+            line-height: 1.5;
+        }
+        
+        .ministry-footer .contact-grid {
+            display: table;
+            margin-bottom: 10px;
+        }
+        
+        .ministry-footer .contact-row {
+            display: table-row;
+        }
+        
+        .ministry-footer .label {
+            display: table-cell;
+            padding-right: 15px;
+            min-width: 120px;
+            white-space: nowrap;
+        }
+        
+        .ministry-footer .value {
+            display: table-cell;
+        }
+        
+        .ministry-footer a {
+            color: #0066CC;
+            text-decoration: none;
+        }
+        
+        .ministry-footer a:hover {
+            text-decoration: underline;
+        }
     </style>
+    """
+    
+    # Create ministry footer HTML with table-like layout for better alignment
+    ministry_footer = """
+    <div class="ministry-footer">
+        <h2>Ministry of Public and Business Service Delivery and Procurement</h2>
+        <p>Consumer Services Operations Division</p>
+        <p>PO Box 450</p>
+        <p>Toronto, ON M7A 2J6</p>
+        <div class="contact-grid">
+            <div class="contact-row">
+                <span class="label">Telephone:</span>
+                <span class="value">416-326-8800</span>
+            </div>
+            <div class="contact-row">
+                <span class="label">Toll free:</span>
+                <span class="value">1-800-889-9768</span>
+            </div>
+            <div class="contact-row">
+                <span class="label">TTY:</span>
+                <span class="value">416-229-6086</span>
+            </div>
+            <div class="contact-row">
+                <span class="label">TTY toll free:</span>
+                <span class="value">1-877-666-6545</span>
+            </div>
+            <div class="contact-row">
+                <span class="label">Email:</span>
+                <span class="value"><a href="mailto:consumer@ontario.ca">consumer@ontario.ca</a></span>
+            </div>
+            <div class="contact-row">
+                <span class="label">Website:</span>
+                <span class="value"><a href="https://www.ontario.ca/page/consumer-protection-ontario" target="_blank">ontario.ca/consumer</a></span>
+            </div>
+        </div>
+        <p>Accessible formats and communication supports are available upon request.</p>
+    </div>
     """
     
     return f"""
@@ -556,6 +675,7 @@ def create_complete_html(body_content):
     </head>
     <body>
         {body_content}
+        {ministry_footer}
     </body>
     </html>
     """
